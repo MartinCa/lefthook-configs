@@ -6,9 +6,14 @@
 #
 #   remotes:
 #     - git_url: https://github.com/MartinCa/lefthook-configs
-#       ref: v1.0.1
+#       ref: v2.0.0
 #       configs:
 #         - langs/ts.yml
+#
+# Command names are deliberately unsuffixed (`lint`/`format`) so existing
+# v1.0.x consumers are unaffected on bump; langs/python.yml uses the suffixed
+# `lint-python`/`format-python` so both fragments can be consumed together
+# without lefthook silently merging same-named commands (ref: #5).
 #
 # Requirements: eslint and prettier installed in the consumer repo and
 # runnable through `pnpm` (frontend-kit convention). Repos on npm/yarn should

@@ -12,7 +12,7 @@ lefthook's `remotes:` mechanism, never by vendoring.
 | `lefthook-shared.yml` | `pre-commit` | Secret-scan the staged diff (betterleaks) and audit staged GitHub Actions workflow files (zizmor) | `betterleaks`, `zizmor` |
 | `commit-msg.yml` | `commit-msg` | Enforce Conventional Commits on the commit message | none (POSIX sh + `grep`) |
 | `langs/ts.yml` | `pre-commit` | ESLint `--fix` + Prettier `--write` on staged TS/JS and Prettier on JSON/CSS/MD | `pnpm`, eslint, prettier |
-| `langs/python.yml` | `pre-commit` | Ruff `check --fix` + `format` on staged Python | `uv` (`uvx ruff`) |
+| `langs/python.yml` | `pre-commit` | Ruff `check --fix` + `format` on staged Python via `lint-python`/`format-python` (suffixed so it composes with `langs/ts.yml`) | `uv` (`uvx ruff`) |
 | `langs/go.yml` | `pre-commit` | `gofmt -w` + `goimports -w` on staged Go | `gofmt`, `goimports` |
 | `langs/shell.yml` | `pre-commit` | `shfmt -w` + blocking `shellcheck` on staged shell scripts | `shfmt`, `shellcheck` |
 | `langs/json.yml` | `pre-commit` | Format-check staged JSON against `jq --indent 2 .` (no Node.js needed; check-only, deliberately) | `jq` |
@@ -28,7 +28,7 @@ Add or merge the following into your project's `lefthook.yml`:
 # lefthook.yml
 remotes:
   - git_url: https://github.com/MartinCa/lefthook-configs
-    ref: v1.0.1
+    ref: v2.0.0
     configs:
       - lefthook-shared.yml
       - commit-msg.yml
@@ -47,8 +47,9 @@ remotes:
   **not** set (e.g. `root:`), which is what makes the
   [monorepo subdirectory](#monorepo-subdirectory-override) pattern work.
   The `ts`/`python` fragment collision on the `lint`/`format` command names is
-  this same merge-order behavior — see
-  [issue #5](https://github.com/MartinCa/lefthook-configs/issues/5).
+  this same merge-order behavior — fixed in v2.0.0 by renaming the Python
+  commands to `lint-python`/`format-python` (see
+  [Migration v1 → v2](#migration-v1--v2)).
 - Caveat: `lefthook dump` does **not** fetch or sync `remotes:` configs — it
   merges only what lefthook has already fetched. Run `lefthook install -f`
   first; otherwise dump silently shows only the local, unmerged config.
@@ -175,6 +176,25 @@ Releases are SemVer tags pushed to this repo's `main`; consumers pin `ref:`:
 - **`patch`** — a non-breaking bugfix to an existing fragment: a broken or
   incorrect command, wrong documentation, or a false-positive fix. Consumers
   should bump promptly.
+
+### Migration v1 → v2
+
+v2.0.0 renames the `langs/python.yml` pre-commit commands `lint` →
+`lint-python` and `format` → `format-python` to fix
+[issue #5](https://github.com/MartinCa/lefthook-configs/issues/5): lefthook
+merges same-named commands across `configs:` entries key-by-key, so consuming
+`langs/ts.yml` and `langs/python.yml` together silently dropped the TS hooks.
+Consumers pinned to v1.0.1 that consume `langs/python.yml` will see the
+command names change on the `ref:` bump:
+
+- local `lefthook run lint`-style invocations and skips/overrides by name in
+  `lefthook-local.yml` (e.g. `lint: {skip: ...}`) must use the new
+  `lint-python`/`format-python` names;
+- mixed TS+Python repos that worked around the collision — by re-declaring
+  the TS commands under distinct local names, or by maintaining their own
+  `lint-python`/`format-python` overrides — can now consume `langs/python.yml`
+  directly and drop those workarounds. `langs/ts.yml` keeps the unsuffixed
+  `lint`/`format` names, so its behavior is unchanged on bump.
 
 ### Automated ref bumps (Renovate)
 

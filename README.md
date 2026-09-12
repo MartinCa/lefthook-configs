@@ -125,8 +125,9 @@ Releases are SemVer tags pushed to this repo's `main`; consumers pin `ref:`:
   semantics change). Consumers must re-review before upgrading.
 - **`minor`** — a new fragment or an additive,
   backwards-compatible change (new glob, new optional command).
-- No patch-level `vX.Y.Z` bumps are planned unless a fix is needed—the tag is
-  always a `vMAJOR.MINOR.0`.
+- **`patch`** — a non-breaking bugfix to an existing fragment: a broken or
+  incorrect command, wrong documentation, or a false-positive fix. Consumers
+  should bump promptly.
 
 ### Automated ref bumps (Renovate)
 

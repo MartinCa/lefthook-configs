@@ -39,17 +39,24 @@ remotes:
 - **Pin `ref:`** to a released tag (see [Versioning](#versioning)). Do not use a
   branch — tags are immutable and that is what makes consumer builds
   reproducible.
-- Each `configs:` entry is merged as a separate config. Hook groups and
-  commands of the same name merge **key-by-key** (deep merge) with your local
-  `lefthook.yml`, so you can tweak a single setting — like `root:` — while
-  keeping the fragment's `run`/`glob` (this is how the
-  [audiobook-manager](#root-override-for-monorepo-subdirectories) pattern
-  below works).
+- **Merge order (verified on lefthook 2.1.12 with `lefthook dump`):**
+  `remotes:` fragments merge **over** your `lefthook.yml` — for any command
+  property the fragment sets (e.g. `run:`), your `lefthook.yml` value is
+  discarded. A same-named `run:` in `lefthook.yml` therefore **loses** to the
+  fragment. Your `lefthook.yml` only contributes keys the fragment does
+  **not** set (e.g. `root:`), which is what makes the
+  [monorepo subdirectory](#monorepo-subdirectory-override) pattern work.
+- **`lefthook-local.yml` is the final merge layer and wins over everything,**
+  including `remotes:` fragments. Same-named command properties placed there
+  override the fragment, while fragment-only keys (`glob:`, `stage_fixed:`)
+  are still inherited. Use it for team-wide overrides — see
+  [Team-wide npm override](#team-wide-npm-override-npm-only-repos) and
+  [Monorepo subdirectory override](#monorepo-subdirectory-override).
 - Gotcha: `lefthook validate` only inspects the *local* `lefthook.yml` and
   does not merge `remotes:` configs. A local partial override (e.g. only
   `root:`) will therefore be reported as "missing `run`" by `lefthook
   validate`. That is expected — verify merged behavior with
-  `lefthook run <hook>`.
+  `lefthook dump` or `lefthook run <hook>`.
 
 ## Installing lefthook in a consumer project
 
@@ -86,22 +93,42 @@ or the official install script:
 $ curl -fsSL https://get.lefthook.io/install.sh | bash -s 2.1.12
 ```
 
-## Root override for monorepo subdirectories
+## Team-wide npm override (npm-only repos)
 
-Fragments deliberately carry no `root:`. Consumers scoping a hook to a
-subdirectory (monorepos) add `root:` locally. Example: `audiobook-manager`
-has its app under `client/` and scopes the TS hooks there:
+`langs/ts.yml` invokes eslint/prettier through `pnpm` (the frontend-kit
+convention). An npm-only repo has no pnpm: running `pnpm <cmd>` makes pnpm
+resolve the tree and write a `pnpm-lock.yaml` next to `package-lock.json`,
+or fails outright when pnpm is not on PATH. Because `remotes:` fragments win
+over `lefthook.yml`, the fix lives in a committed `lefthook-local.yml` — the
+one layer that overrides remotes — overriding `run:` with
+`npx --no-install`:
 
 ```yaml
-# audiobook-manager/lefthook.yml
-remotes:
-  - git_url: https://github.com/MartinCa/lefthook-configs
-    ref: v1.0.0
-    configs:
-      - lefthook-shared.yml
-      - commit-msg.yml
-      - langs/ts.yml
+# lefthook-local.yml
+pre-commit:
+  commands:
+    lint:
+      run: npx --no-install eslint --fix {staged_files} && npx --no-install prettier --write {staged_files}
+    format:
+      run: npx --no-install prettier --write {staged_files}
+```
 
+This replaces the fragment's `run:` while inheriting its `glob`/`stage_fixed`.
+Reference implementation: [frontend-kit's committed `lefthook-local.yml`](https://github.com/MartinCa/frontend-kit/blob/main/lefthook-local.yml).
+Note the lefthook convention: `lefthook-local.yml` is normally *personal and
+untracked* (it is even gitignored in this repo). Teams that commit it for a
+team-wide override should say so in their own docs — frontend-kit does, in
+its `AGENTS.md`.
+
+## Monorepo subdirectory override
+
+Fragments deliberately carry no `root:`. A repo whose TS lives in a
+subdirectory (e.g. `client/`, `frontend/`) scopes the hooks there with the
+same mechanism — a committed `lefthook-local.yml` adding `root:` to the
+`lint`/`format` commands:
+
+```yaml
+# lefthook-local.yml
 pre-commit:
   commands:
     lint:
@@ -110,11 +137,14 @@ pre-commit:
       root: "client/"
 ```
 
-The two `root:` keys merge into the fragments' `lint`/`format` commands, so
-ESLint/Prettier only see files under `client/` (lefthook re-bases the staged
-paths relative to the command root). Note that `lefthook validate` alone will
-flag `lint`/`format` here as missing `run` because it validates the local file
-without merging the remote configs — use `lefthook run pre-commit` to verify.
+`root:` merges into the fragment's `lint`/`format` commands, so ESLint/Prettier
+only see files under `client/` (lefthook re-bases the staged paths relative to
+the command root) — verified via `lefthook dump`. The `root:` keys survive the
+merge because the fragment does not set `root:`; a same-named key like `run:`
+would not. If the subdirectory override must also change `run:` (npm repos),
+combine both forms in the same `lefthook-local.yml` as in the
+[Team-wide npm override](#team-wide-npm-override-npm-only-repos) example
+above.
 
 ## Versioning
 

@@ -1,0 +1,33 @@
+# langs/json.yml
+#
+# JSON formatting `pre-commit` hook.
+#
+# Consume it from a project's `lefthook.yml` via `remotes:` (see README):
+#
+#   remotes:
+#     - git_url: https://github.com/MartinCa/lefthook-configs
+#       ref: v1.0.0
+#       configs:
+#         - langs/json.yml
+#
+# Format-CHECK only (no auto-rewrite, no `stage_fixed`): uses `jq`, so no
+# Node.js runtime is required. `jq --indent 2 .` is treated as the canonical
+# form — 2-space indent, trailing newline, keys preserved in insertion order
+# (matching what Prettier produces for JSON). Node-based projects already get
+# Prettier JSON formatting from langs/ts.yml.
+#
+# Requirements: `jq` on PATH.
+#
+# If the check fails, reformat the files and re-stage them:
+#   jq --indent 2 . file.json > file.json.tmp && mv file.json.tmp file.json
+pre-commit:
+  commands:
+    format:
+      glob: "*.json"
+      run: |
+        for file in {staged_files}; do
+          if ! jq --indent 2 . "$file" | cmp -s - "$file"; then
+            echo "error: $file is not jq-formatted (fix: jq --indent 2 . <file> > tmp && mv tmp <file>)" >&2
+            exit 1
+          fi
+        done

@@ -1,0 +1,26 @@
+# langs/python.yml
+#
+# Python linting + formatting `pre-commit` hooks powered by Ruff.
+#
+# Consume it from a project's `lefthook.yml` via `remotes:` (see README):
+#
+#   remotes:
+#     - git_url: https://github.com/MartinCa/lefthook-configs
+#       ref: v1.0.0
+#       configs:
+#         - langs/python.yml
+#
+# Requirements: `uv` (astral-sh/uv) on PATH — `uvx ruff` runs Ruff without
+# installing it into the consumer project. `stage_fixed: true` re-stages the
+# files Ruff rewrote before the commit continues.
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{py,pyi}"
+      run: uvx ruff check --fix {staged_files}
+      stage_fixed: true
+    format:
+      glob: "*.{py,pyi}"
+      run: uvx ruff format {staged_files}
+      stage_fixed: true

@@ -1,0 +1,30 @@
+# langs/go.yml
+#
+# Go formatting `pre-commit` hooks.
+#
+# Consume it from a project's `lefthook.yml` via `remotes:` (see README):
+#
+#   remotes:
+#     - git_url: https://github.com/MartinCa/lefthook-configs
+#       ref: v1.0.0
+#       configs:
+#         - langs/go.yml
+#
+# Requirements:
+#   - gofmt, shipped with Go toolchains (`gofmt -w` rewrites files in place).
+#   - goimports (https://github.com/damoeb/goimports) — install it explicitly,
+#     it is not part of the Go distribution:
+#       go install github.com/damoeb/goimports@latest
+#
+# Both commands use `stage_fixed: true` to re-stage reformatted files.
+pre-commit:
+  parallel: true
+  commands:
+    gofmt:
+      glob: "*.go"
+      run: gofmt -w {staged_files}
+      stage_fixed: true
+    goimports:
+      glob: "*.go"
+      run: goimports -w {staged_files}
+      stage_fixed: true

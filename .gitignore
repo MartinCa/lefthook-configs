@@ -1,0 +1,10 @@
+# Local scratch/tooling artifacts
+/tmp/
+node_modules/
+
+# Lefthook local overrides (consumer machines)
+.lefthook-local.yml
+lefthook-local.yml
+
+# Editor/OS noise
+.DS_Store

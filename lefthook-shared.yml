@@ -1,0 +1,33 @@
+# lefthook-shared.yml
+#
+# Language-agnostic `pre-commit` hooks shared across repositories:
+# secret scanning (betterleaks) + GitHub Actions auditing (zizmor).
+#
+# Consume it from a project's `lefthook.yml` via `remotes:` (see README):
+#
+#   remotes:
+#     - git_url: https://github.com/MartinCa/lefthook-configs
+#       ref: v1.0.0
+#       configs:
+#         - lefthook-shared.yml
+#
+# Requirements on the consumer machine:
+#   - betterleaks (the org's secret-scanning tool, pre-commit mode)
+#   - zizmor      (https://github.com/woodruffw/zizmor)
+#
+# Both must be on PATH. The `pre-commit` group runs in parallel; the commit
+# is blocked when any command reports a leak or a workflow finding.
+pre-commit:
+  parallel: true
+  commands:
+    # Scans the staged diff for secrets (API keys, tokens, credentials).
+    # No glob/file template on purpose: betterleaks inspects the staged git
+    # content itself, and every commit must be scanned (not just some files).
+    betterleaks:
+      run: betterleaks git --staged --no-banner --redact
+
+    # Audits staged GitHub Actions workflow files with zizmor. The glob makes
+    # lefthook skip the command entirely when no workflow file is staged.
+    zizmor:
+      glob: ".github/workflows/*.{yml,yaml}"
+      run: zizmor {staged_files}

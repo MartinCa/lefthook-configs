@@ -1,0 +1,27 @@
+# commit-msg.yml
+#
+# Conventional Commits validation for the `commit-msg` git hook.
+#
+# Consume it from a project's `lefthook.yml` via `remotes:` (see README):
+#
+#   remotes:
+#     - git_url: https://github.com/MartinCa/lefthook-configs
+#       ref: v1.0.0
+#       configs:
+#         - commit-msg.yml
+#
+# No external dependencies: plain POSIX sh + grep.
+#
+# In lefthook commit-msg hooks `{1}` is the only argument git passes to the
+# hook: the path to the file holding the proposed commit message.
+commit-msg:
+  commands:
+    conventional-commits:
+      run: |
+        if ! grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|release)(\(.+\))?!?: .{1,}' "{1}"; then
+          echo "error: commit message does not follow Conventional Commits" >&2
+          echo "expected format: <type>(<scope>)?: <subject>" >&2
+          echo "example:         feat(api): add login endpoint" >&2
+          echo "types:           feat fix docs style refactor perf test build ci chore revert release" >&2
+          exit 1
+        fi

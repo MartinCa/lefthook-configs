@@ -1,0 +1,30 @@
+# langs/ts.yml
+#
+# TypeScript/JavaScript linting + Prettier formatting `pre-commit` hooks.
+#
+# Consume it from a project's `lefthook.yml` via `remotes:` (see README):
+#
+#   remotes:
+#     - git_url: https://github.com/MartinCa/lefthook-configs
+#       ref: v1.0.0
+#       configs:
+#         - langs/ts.yml
+#
+# Requirements: eslint and prettier installed in the consumer repo and
+# runnable through `pnpm` (frontend-kit convention). Repos on npm/yarn should
+# override these commands locally (see README). `stage_fixed: true` re-stages
+# the files the formatter touched before the commit continues.
+#
+# Intentionally has no `root:` — consumers that lint a monorepo subdirectory
+# add `root:` themselves in their local `lefthook.yml` (see README).
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{ts,tsx}"
+      run: pnpm eslint --fix {staged_files} && pnpm prettier --write {staged_files}
+      stage_fixed: true
+    format:
+      glob: "*.{json,css,md,js,mjs,html}"
+      run: pnpm prettier --write {staged_files}
+      stage_fixed: true

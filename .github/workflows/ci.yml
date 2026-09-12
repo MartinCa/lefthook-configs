@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LEFTHOOK_VERSION: "2.1.12"
+
+jobs:
+  zizmor:
+    name: Zizmor
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      security-events: write # upload zizmor's SARIF report to code scanning
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        with:
+          min-severity: medium
+
+  validate:
+    name: Validate configs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install lefthook
+        # zizmor: ignore[adhoc-packages] — pinned read-only tool install for
+        # config validation; there is no lockfile to commit for a temp tool.
+        run: npm install -g lefthook@${{ env.LEFTHOOK_VERSION }}
+      - name: Validate lefthook fragments
+        run: |
+          for fragment in lefthook-shared.yml commit-msg.yml langs/*.yml; do
+            LEFTHOOK_CONFIG="$fragment" lefthook validate
+          done
+          echo "All lefthook fragments validated"
+      - name: YAML syntax check
+        run: |
+          if ! python3 -c 'import yaml' >/dev/null 2>&1; then
+            python3 -m pip install --quiet pyyaml
+          fi
+          for file in $(git ls-files '*.yml' '*.yaml'); do
+            python3 -c 'import sys, yaml; yaml.safe_load(open(sys.argv[1], encoding="utf-8"))' "$file"
+          done
+          echo "All YAML files parse OK"

@@ -1,0 +1,27 @@
+# langs/shell.yml
+#
+# Shell script formatting + linting `pre-commit` hooks.
+#
+# Consume it from a project's `lefthook.yml` via `remotes:` (see README):
+#
+#   remotes:
+#     - git_url: https://github.com/MartinCa/lefthook-configs
+#       ref: v1.0.0
+#       configs:
+#         - langs/shell.yml
+#
+# Requirements: `shfmt` (mvdan/sh) and `shellcheck` on PATH.
+#
+# `format` rewrites files in place (stage_fixed).
+# `lint` runs shellcheck and FAILS the commit on findings — this is
+# intentional: for shell script linting a hard gate beats an advisory.
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.{sh,bash}"
+      run: shfmt -w {staged_files}
+      stage_fixed: true
+    lint:
+      glob: "*.{sh,bash}"
+      run: shellcheck {staged_files}

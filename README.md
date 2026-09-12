@@ -28,7 +28,7 @@ Add or merge the following into your project's `lefthook.yml`:
 # lefthook.yml
 remotes:
   - git_url: https://github.com/MartinCa/lefthook-configs
-    ref: v1.0.0
+    ref: v1.0.1
     configs:
       - lefthook-shared.yml
       - commit-msg.yml
@@ -46,17 +46,26 @@ remotes:
   fragment. Your `lefthook.yml` only contributes keys the fragment does
   **not** set (e.g. `root:`), which is what makes the
   [monorepo subdirectory](#monorepo-subdirectory-override) pattern work.
+  The `ts`/`python` fragment collision on the `lint`/`format` command names is
+  this same merge-order behavior — see
+  [issue #5](https://github.com/MartinCa/lefthook-configs/issues/5).
+- Caveat: `lefthook dump` does **not** fetch or sync `remotes:` configs — it
+  merges only what lefthook has already fetched. Run `lefthook install -f`
+  first; otherwise dump silently shows only the local, unmerged config.
 - **`lefthook-local.yml` is the final merge layer and wins over everything,**
   including `remotes:` fragments. Same-named command properties placed there
   override the fragment, while fragment-only keys (`glob:`, `stage_fixed:`)
   are still inherited. Use it for team-wide overrides — see
   [Team-wide npm override](#team-wide-npm-override-npm-only-repos) and
   [Monorepo subdirectory override](#monorepo-subdirectory-override).
-- Gotcha: `lefthook validate` only inspects the *local* `lefthook.yml` and
-  does not merge `remotes:` configs. A local partial override (e.g. only
-  `root:`) will therefore be reported as "missing `run`" by `lefthook
-  validate`. That is expected — verify merged behavior with
-  `lefthook dump` or `lefthook run <hook>`.
+- Gotcha: `lefthook validate` does not merge `remotes:` fragments, so a
+  partial local override (e.g. only `root:`) fails validation — on lefthook
+  2.1.12 the output is `run: Value is null but should be string` and
+  "validation failed for main config". Note validate *does* read
+  `lefthook-local.yml`: lefthook merges that file into the main config, so it
+  is not only inspecting `lefthook.yml`. The validation failure is expected —
+  verify merged behavior with `lefthook dump` (after `lefthook install -f`)
+  or `lefthook run <hook>`.
 
 ## Installing lefthook in a consumer project
 
@@ -114,7 +123,8 @@ pre-commit:
 ```
 
 This replaces the fragment's `run:` while inheriting its `glob`/`stage_fixed`.
-Reference implementation: [frontend-kit's committed `lefthook-local.yml`](https://github.com/MartinCa/frontend-kit/blob/main/lefthook-local.yml).
+Reference implementation: [frontend-kit's committed `lefthook-local.yml`](https://github.com/MartinCa/frontend-kit/blob/main/lefthook-local.yml)
+(frontend-kit additionally excludes `test/fixtures/**` — repo-specific).
 Note the lefthook convention: `lefthook-local.yml` is normally *personal and
 untracked* (it is even gitignored in this repo). Teams that commit it for a
 team-wide override should say so in their own docs — frontend-kit does, in
@@ -145,6 +155,13 @@ would not. If the subdirectory override must also change `run:` (npm repos),
 combine both forms in the same `lefthook-local.yml` as in the
 [Team-wide npm override](#team-wide-npm-override-npm-only-repos) example
 above.
+
+Real consumers of this committed root-override pattern:
+[audiobook-manager](https://github.com/MartinCa/audiobook-manager) uses
+`root: "client/"` ([PR #1427](https://github.com/MartinCa/audiobook-manager/pull/1427))
+and [prowlarr-watcher](https://github.com/MartinCa/prowlarr-watcher) uses
+`root: "frontend/"` ([PR #126](https://github.com/MartinCa/prowlarr-watcher/pull/126)),
+both via a committed `lefthook-local.yml`.
 
 ## Versioning
 

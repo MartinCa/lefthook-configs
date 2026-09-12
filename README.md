@@ -11,7 +11,7 @@ lefthook's `remotes:` mechanism, never by vendoring.
 | --- | --- | --- | --- |
 | `lefthook-shared.yml` | `pre-commit` | Secret-scan the staged diff (betterleaks) and audit staged GitHub Actions workflow files (zizmor) | `betterleaks`, `zizmor` |
 | `commit-msg.yml` | `commit-msg` | Enforce Conventional Commits on the commit message | none (POSIX sh + `grep`) |
-| `langs/ts.yml` | `pre-commit` | ESLint `--fix` + Prettier `--write` on staged TS/JS and Prettier on JSON/CSS/MD | `pnpm`, eslint, prettier |
+| `langs/ts.yml` | `pre-commit` | ESLint `--fix` + Prettier `--write` via `lint-ts` and Prettier on JSON/CSS/MD via `format-ts` (suffixed — every language fragment carries a suffixed name in v2.0.0, so any combination composes) | `pnpm`, eslint, prettier |
 | `langs/python.yml` | `pre-commit` | Ruff `check --fix` + `format` on staged Python via `lint-python`/`format-python` (suffixed so it composes with `langs/ts.yml`) | `uv` (`uvx ruff`) |
 | `langs/go.yml` | `pre-commit` | `gofmt -w` + `goimports -w` on staged Go | `gofmt`, `goimports` |
 | `langs/shell.yml` | `pre-commit` | `shfmt -w` + blocking `shellcheck` on staged shell scripts via `format-shell`/`lint-shell` (suffixed so it composes with `langs/ts.yml`) | `shfmt`, `shellcheck` |
@@ -117,15 +117,17 @@ one layer that overrides remotes — overriding `run:` with
 # lefthook-local.yml
 pre-commit:
   commands:
-    lint:
+    lint-ts:
       run: npx --no-install eslint --fix {staged_files} && npx --no-install prettier --write {staged_files}
-    format:
+    format-ts:
       run: npx --no-install prettier --write {staged_files}
 ```
 
 This replaces the fragment's `run:` while inheriting its `glob`/`stage_fixed`.
 Reference implementation: [frontend-kit's committed `lefthook-local.yml`](https://github.com/MartinCa/frontend-kit/blob/main/lefthook-local.yml)
-(frontend-kit additionally excludes `test/fixtures/**` — repo-specific).
+(frontend-kit additionally excludes `test/fixtures/**` — repo-specific;
+still pinned to v1.0.1, so its override keys are the old `lint`/`format` —
+rename to `lint-ts`/`format-ts` when bumping to v2.0.0).
 Note the lefthook convention: `lefthook-local.yml` is normally *personal and
 untracked* (it is even gitignored in this repo). Teams that commit it for a
 team-wide override should say so in their own docs — frontend-kit does, in
@@ -136,26 +138,26 @@ its `AGENTS.md`.
 Fragments deliberately carry no `root:`. A repo whose TS lives in a
 subdirectory (e.g. `client/`, `frontend/`) scopes the hooks there with the
 same mechanism — a committed `lefthook-local.yml` adding `root:` to the
-`lint`/`format` commands:
+`lint-ts`/`format-ts` commands:
 
 ```yaml
 # lefthook-local.yml
 pre-commit:
   commands:
-    lint:
+    lint-ts:
       root: "client/"
-    format:
+    format-ts:
       root: "client/"
 ```
 
-`root:` merges into the fragment's `lint`/`format` commands, so ESLint/Prettier
-only see files under `client/` (lefthook re-bases the staged paths relative to
-the command root) — verified via `lefthook dump`. The `root:` keys survive the
-merge because the fragment does not set `root:`; a same-named key like `run:`
-would not. If the subdirectory override must also change `run:` (npm repos),
-combine both forms in the same `lefthook-local.yml` as in the
-[Team-wide npm override](#team-wide-npm-override-npm-only-repos) example
-above.
+`root:` merges into the fragment's `lint-ts`/`format-ts` commands, so
+ESLint/Prettier only see files under `client/` (lefthook re-bases the staged
+paths relative to the command root) — verified via `lefthook dump`. The
+`root:` keys survive the merge because the fragment does not set `root:`; a
+same-named key like `run:` would not. If the subdirectory override must also
+change `run:` (npm repos), combine both forms in the same `lefthook-local.yml`
+as in the [Team-wide npm override](#team-wide-npm-override-npm-only-repos)
+example above.
 
 Real consumers of this committed root-override pattern:
 [audiobook-manager](https://github.com/MartinCa/audiobook-manager) uses
@@ -184,26 +186,30 @@ fix [issue #5](https://github.com/MartinCa/lefthook-configs/issues/5):
 lefthook merges same-named commands across `configs:` entries key-by-key, so
 consuming e.g. `langs/ts.yml` and `langs/python.yml` together silently
 dropped the TS hooks (and `langs/json.yml`'s `format` inherited `stage_fixed`
-from `langs/ts.yml`):
+from `langs/ts.yml`). All language fragments now use suffixed names:
 
+- `langs/ts.yml`: `lint` → `lint-ts`, `format` → `format-ts`;
 - `langs/python.yml`: `lint` → `lint-python`, `format` → `format-python`;
 - `langs/shell.yml`: `lint` → `lint-shell`, `format` → `format-shell`;
 - `langs/json.yml`: `format` → `check-json` (the command only checks — the
-  old `format` name was misleading on top of colliding);
-- `langs/ts.yml` keeps the unsuffixed `lint`/`format` names, so TS-only
-  consumers are unaffected on bump.
+  old `format` name was misleading on top of colliding).
 
-Consumers pinned to v1.0.1 that consume these fragments will see the command
-names change on the `ref:` bump:
+Because the TS names changed too, **every** consumer bumping `ref:` from
+v1.0.x must update by-name references:
 
-- local `lefthook run lint`-style invocations and skips/overrides by name in
-  `lefthook-local.yml` (e.g. `lint: {skip: ...}`) must use the new
-  `lint-python`/`format-python`, `lint-shell`/`format-shell`, and
-  `check-json` names;
+- local `lefthook run lint`/`lefthook run format`-style invocations and
+  skips/overrides by name in `lefthook-local.yml` (e.g. `lint: {skip: ...}`)
+  must use the new names: `lint-ts`/`format-ts`, `lint-python`/`format-python`,
+  `lint-shell`/`format-shell`, `check-json`;
+- committed `lefthook-local.yml` overrides keyed on `lint`/`format` for the
+  TS hooks need their keys renamed. Known consumer:
+  [frontend-kit](https://github.com/MartinCa/frontend-kit), whose committed
+  `lefthook-local.yml` overrides `lint`/`format` — it must update those
+  keys to `lint-ts`/`format-ts` when bumping;
 - mixed-language repos that worked around the collision — by re-declaring the
   TS commands under distinct local names, or by maintaining their own
-  suffixed overrides — can now consume any combination of `langs/*.yml` plus
-  `langs/ts.yml` directly and drop those workarounds.
+  suffixed overrides — can now consume any combination of `langs/*.yml`
+  directly and drop those workarounds.
 
 ### Automated ref bumps (Renovate)
 

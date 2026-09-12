@@ -10,10 +10,12 @@
 #       configs:
 #         - langs/ts.yml
 #
-# Command names are deliberately unsuffixed (`lint`/`format`) so existing
-# v1.0.x consumers are unaffected on bump; langs/python.yml uses the suffixed
-# `lint-python`/`format-python` so both fragments can be consumed together
-# without lefthook silently merging same-named commands (ref: #5).
+# Command names are suffixed (`lint-ts`/`format-ts`) for full consistency —
+# every language fragment uses a suffixed name (`lint-ts`/`format-ts`,
+# `lint-python`/`format-python`, `lint-shell`/`format-shell`, `check-json`),
+# so any combination of fragments composes without lefthook silently merging
+# same-named commands (ref: #5). Consumers pinned to v1.0.x keep the
+# unsuffixed `lint`/`format` names until they bump `ref:` to v2.0.0.
 #
 # Requirements: eslint and prettier installed in the consumer repo and
 # runnable through `pnpm` (frontend-kit convention). Repos on npm/yarn should
@@ -25,11 +27,11 @@
 pre-commit:
   parallel: true
   commands:
-    lint:
+    lint-ts:
       glob: "*.{ts,tsx}"
       run: pnpm eslint --fix {staged_files} && pnpm prettier --write {staged_files}
       stage_fixed: true
-    format:
+    format-ts:
       glob: "*.{json,css,md,js,mjs,html}"
       run: pnpm prettier --write {staged_files}
       stage_fixed: true

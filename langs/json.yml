@@ -13,14 +13,19 @@
 # Format-CHECK only (no auto-rewrite, no `stage_fixed`): uses `jq`, so no
 # Node.js runtime is required. `jq --indent 2 .` is treated as the canonical
 # form — 2-space indent, trailing newline, keys preserved in insertion order
-# (matching what Prettier produces for JSON). Node-based projects already get
-# Prettier JSON formatting from langs/ts.yml.
+# (matching what Prettier produces for JSON — but note jq also normalizes
+# numeric literals: trailing zeros are dropped and exponents or very large
+# numbers may be reformatted, so JSON with unusual numeric literals can be
+# forced into jq's rewriting). Node-based projects already get exact Prettier
+# JSON formatting from langs/ts.yml; prefer that in Node-based repos for
+# byte-for-byte Prettier parity.
 #
 # Requirements: `jq` on PATH.
 #
 # If the check fails, reformat the files and re-stage them:
 #   jq --indent 2 . file.json > file.json.tmp && mv file.json.tmp file.json
 pre-commit:
+  parallel: true
   commands:
     format:
       glob: "*.json"

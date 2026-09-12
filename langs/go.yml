@@ -12,9 +12,9 @@
 #
 # Requirements:
 #   - gofmt, shipped with Go toolchains (`gofmt -w` rewrites files in place).
-#   - goimports (https://github.com/damoeb/goimports) — install it explicitly,
+#   - goimports (golang.org/x/tools/cmd/goimports) — install it explicitly,
 #     it is not part of the Go distribution:
-#       go install github.com/damoeb/goimports@latest
+#       go install golang.org/x/tools/cmd/goimports@latest
 #
 # Both commands use `stage_fixed: true` to re-stage reformatted files.
 pre-commit:

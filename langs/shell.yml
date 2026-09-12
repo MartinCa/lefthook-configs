@@ -12,16 +12,20 @@
 #
 # Requirements: `shfmt` (mvdan/sh) and `shellcheck` on PATH.
 #
-# `format` rewrites files in place (stage_fixed).
-# `lint` runs shellcheck and FAILS the commit on findings — this is
+# `format-shell` rewrites files in place (stage_fixed).
+# `lint-shell` runs shellcheck and FAILS the commit on findings — this is
 # intentional: for shell script linting a hard gate beats an advisory.
+#
+# Command names are suffixed (`lint-shell`/`format-shell`) so this fragment
+# can be consumed together with langs/ts.yml — lefthook merges same-named
+# commands key-by-key, which previously made the TS hooks lose (refs: #5).
 pre-commit:
   parallel: true
   commands:
-    format:
+    format-shell:
       glob: "*.{sh,bash}"
       run: shfmt -w {staged_files}
       stage_fixed: true
-    lint:
+    lint-shell:
       glob: "*.{sh,bash}"
       run: shellcheck {staged_files}

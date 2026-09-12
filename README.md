@@ -14,8 +14,8 @@ lefthook's `remotes:` mechanism, never by vendoring.
 | `langs/ts.yml` | `pre-commit` | ESLint `--fix` + Prettier `--write` on staged TS/JS and Prettier on JSON/CSS/MD | `pnpm`, eslint, prettier |
 | `langs/python.yml` | `pre-commit` | Ruff `check --fix` + `format` on staged Python via `lint-python`/`format-python` (suffixed so it composes with `langs/ts.yml`) | `uv` (`uvx ruff`) |
 | `langs/go.yml` | `pre-commit` | `gofmt -w` + `goimports -w` on staged Go | `gofmt`, `goimports` |
-| `langs/shell.yml` | `pre-commit` | `shfmt -w` + blocking `shellcheck` on staged shell scripts | `shfmt`, `shellcheck` |
-| `langs/json.yml` | `pre-commit` | Format-check staged JSON against `jq --indent 2 .` (no Node.js needed; check-only, deliberately) | `jq` |
+| `langs/shell.yml` | `pre-commit` | `shfmt -w` + blocking `shellcheck` on staged shell scripts via `format-shell`/`lint-shell` (suffixed so it composes with `langs/ts.yml`) | `shfmt`, `shellcheck` |
+| `langs/json.yml` | `pre-commit` | Check-only `jq --indent 2 .` on staged JSON via `check-json` (no Node.js needed; suffixed so it composes with `langs/ts.yml`) | `jq` |
 
 Every fragment carries a top-of-file comment documenting how to consume it
 and what it requires.
@@ -46,9 +46,9 @@ remotes:
   fragment. Your `lefthook.yml` only contributes keys the fragment does
   **not** set (e.g. `root:`), which is what makes the
   [monorepo subdirectory](#monorepo-subdirectory-override) pattern work.
-  The `ts`/`python` fragment collision on the `lint`/`format` command names is
-  this same merge-order behavior — fixed in v2.0.0 by renaming the Python
-  commands to `lint-python`/`format-python` (see
+  The `ts`/`python`/`shell`/`json` fragment collision on the `lint`/`format`
+  command names is this same merge-order behavior — fixed in v2.0.0 by
+  renaming the non-TS fragment commands to suffixed names (see
   [Migration v1 → v2](#migration-v1--v2)).
 - Caveat: `lefthook dump` does **not** fetch or sync `remotes:` configs — it
   merges only what lefthook has already fetched. Run `lefthook install -f`
@@ -179,22 +179,31 @@ Releases are SemVer tags pushed to this repo's `main`; consumers pin `ref:`:
 
 ### Migration v1 → v2
 
-v2.0.0 renames the `langs/python.yml` pre-commit commands `lint` →
-`lint-python` and `format` → `format-python` to fix
-[issue #5](https://github.com/MartinCa/lefthook-configs/issues/5): lefthook
-merges same-named commands across `configs:` entries key-by-key, so consuming
-`langs/ts.yml` and `langs/python.yml` together silently dropped the TS hooks.
-Consumers pinned to v1.0.1 that consume `langs/python.yml` will see the
-command names change on the `ref:` bump:
+v2.0.0 renames the collision-prone `langs/*.yml` pre-commit command names to
+fix [issue #5](https://github.com/MartinCa/lefthook-configs/issues/5):
+lefthook merges same-named commands across `configs:` entries key-by-key, so
+consuming e.g. `langs/ts.yml` and `langs/python.yml` together silently
+dropped the TS hooks (and `langs/json.yml`'s `format` inherited `stage_fixed`
+from `langs/ts.yml`):
+
+- `langs/python.yml`: `lint` → `lint-python`, `format` → `format-python`;
+- `langs/shell.yml`: `lint` → `lint-shell`, `format` → `format-shell`;
+- `langs/json.yml`: `format` → `check-json` (the command only checks — the
+  old `format` name was misleading on top of colliding);
+- `langs/ts.yml` keeps the unsuffixed `lint`/`format` names, so TS-only
+  consumers are unaffected on bump.
+
+Consumers pinned to v1.0.1 that consume these fragments will see the command
+names change on the `ref:` bump:
 
 - local `lefthook run lint`-style invocations and skips/overrides by name in
   `lefthook-local.yml` (e.g. `lint: {skip: ...}`) must use the new
-  `lint-python`/`format-python` names;
-- mixed TS+Python repos that worked around the collision — by re-declaring
-  the TS commands under distinct local names, or by maintaining their own
-  `lint-python`/`format-python` overrides — can now consume `langs/python.yml`
-  directly and drop those workarounds. `langs/ts.yml` keeps the unsuffixed
-  `lint`/`format` names, so its behavior is unchanged on bump.
+  `lint-python`/`format-python`, `lint-shell`/`format-shell`, and
+  `check-json` names;
+- mixed-language repos that worked around the collision — by re-declaring the
+  TS commands under distinct local names, or by maintaining their own
+  suffixed overrides — can now consume any combination of `langs/*.yml` plus
+  `langs/ts.yml` directly and drop those workarounds.
 
 ### Automated ref bumps (Renovate)
 

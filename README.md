@@ -50,6 +50,16 @@ remotes:
   command names is this same merge-order behavior — fixed in v2.0.0 by
   renaming the non-TS fragment commands to suffixed names (see
   [Migration v1 → v2](#migration-v1--v2)).
+- **`configs:` ordering — list `lefthook-shared.yml` FIRST (v2.0.1 race fix):**
+  hook-level keys are **last-writer-wins** across the `configs:` entries in
+  listed order. `lefthook-shared.yml` sets `parallel: true`, while
+  `langs/python.yml`/`langs/go.yml` set `parallel: false` to serialize the
+  commands that rewrite the same staged files. If `lefthook-shared.yml` is
+  listed **after** a language fragment, its `parallel: true` silently discards
+  the fragment's `parallel: false` and the serialization race fix is lost —
+  verified on lefthook 2.1.12: with shared listed last, 3/5 pre-commit runs
+  dropped a fix while exiting 0 (`stage_fixed` re-staged the drifted file).
+  Keep the shared fragments first and the language fragments after them (refs: #8).
 - Caveat: `lefthook dump` does **not** fetch or sync `remotes:` configs — it
   merges only what lefthook has already fetched. Run `lefthook install -f`
   first; otherwise dump silently shows only the local, unmerged config.

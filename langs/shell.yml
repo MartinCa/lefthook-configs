@@ -28,4 +28,5 @@ pre-commit:
       stage_fixed: true
     lint-shell:
       glob: "*.{sh,bash}"
-      run: shellcheck {staged_files}
+      # -x follows sourced files, so a commit staging only a script that sources a sibling (e.g. `source "$(dirname "$0")/lib.sh"`) no longer blocks on info-level SC1091; stricter, disables nothing (fixes #7).
+      run: shellcheck -x {staged_files}

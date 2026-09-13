@@ -17,8 +17,19 @@
 #       go install golang.org/x/tools/cmd/goimports@latest
 #
 # Both commands use `stage_fixed: true` to re-stage reformatted files.
+#
+# Ordering when consumed: hook-level keys are last-writer-wins across the
+# `configs:` list in listed order — list lefthook-shared.yml BEFORE this
+# fragment, or its `parallel: true` discards this fragment's `parallel: false`
+# and the v2.0.1 serialization race fix is lost (ref: #8).
+#
+# `parallel: false` is deliberate: gofmt and goimports both rewrite the same
+# staged *.go files, so running them concurrently races two writers per file
+# (same bug class as langs/python.yml). Serialized commands run alphabetically:
+# gofmt < goimports, so goimports — a superset of gofmt (import grouping +
+# gofmt formatting) — runs last and the final file is goimports-canonical.
 pre-commit:
-  parallel: true
+  parallel: false
   commands:
     gofmt:
       glob: "*.go"

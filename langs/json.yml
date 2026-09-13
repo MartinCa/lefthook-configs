@@ -6,7 +6,7 @@
 #
 #   remotes:
 #     - git_url: https://github.com/MartinCa/lefthook-configs
-#       ref: v1.0.1
+#       ref: v2.0.0
 #       configs:
 #         - langs/json.yml
 #
@@ -24,10 +24,15 @@
 #
 # If the check fails, reformat the files and re-stage them:
 #   jq --indent 2 . file.json > file.json.tmp && mv file.json.tmp file.json
+#
+# The command is named `check-json` (not `format`) — it only checks — and is
+# suffixed so this fragment composes with langs/ts.yml — lefthook merges
+# same-named commands key-by-key, which previously leaked ts's `format`
+# stage_fixed into this check (refs: #5).
 pre-commit:
   parallel: true
   commands:
-    format:
+    check-json:
       glob: "*.json"
       run: |
         for file in {staged_files}; do

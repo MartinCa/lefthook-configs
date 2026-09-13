@@ -6,21 +6,25 @@
 #
 #   remotes:
 #     - git_url: https://github.com/MartinCa/lefthook-configs
-#       ref: v1.0.1
+#       ref: v2.0.0
 #       configs:
 #         - langs/python.yml
 #
 # Requirements: `uv` (astral-sh/uv) on PATH — `uvx ruff` runs Ruff without
 # installing it into the consumer project. `stage_fixed: true` re-stages the
 # files Ruff rewrote before the commit continues.
+#
+# Command names are suffixed (`lint-python`/`format-python`) so this fragment
+# can be consumed together with langs/ts.yml — lefthook merges same-named
+# commands key-by-key, which previously made the TS hooks lose to these (ref: #5).
 pre-commit:
   parallel: true
   commands:
-    lint:
+    lint-python:
       glob: "*.{py,pyi}"
       run: uvx ruff check --fix {staged_files}
       stage_fixed: true
-    format:
+    format-python:
       glob: "*.{py,pyi}"
       run: uvx ruff format {staged_files}
       stage_fixed: true

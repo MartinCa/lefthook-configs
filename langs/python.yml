@@ -17,8 +17,14 @@
 # Command names are suffixed (`lint-python`/`format-python`) so this fragment
 # can be consumed together with langs/ts.yml — lefthook merges same-named
 # commands key-by-key, which previously made the TS hooks lose to these (ref: #5).
+#
+# `parallel: false` is deliberate: both commands rewrite the same staged files
+# (`{staged_files}` globs are identical), so running them concurrently races two
+# writers on each file and drops one of the rewrites — observed losing the fix
+# in 3/4 runs of the Phase-3 check, while exit 0 + `stage_fixed` hid the drift.
+# Serializing runs lint-fix first so the formatter normalizes the autofixed files.
 pre-commit:
-  parallel: true
+  parallel: false
   commands:
     lint-python:
       glob: "*.{py,pyi}"

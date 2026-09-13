@@ -17,8 +17,14 @@
 #       go install golang.org/x/tools/cmd/goimports@latest
 #
 # Both commands use `stage_fixed: true` to re-stage reformatted files.
+#
+# `parallel: false` is deliberate: gofmt and goimports both rewrite the same
+# staged *.go files, so running them concurrently races two writers per file
+# (same bug class as langs/python.yml). goimports is a superset of gofmt
+# (import grouping + gofmt formatting), so it runs last and the final file is
+# goimports-canonical.
 pre-commit:
-  parallel: true
+  parallel: false
   commands:
     gofmt:
       glob: "*.go"

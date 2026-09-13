@@ -1,0 +1,29 @@
+# pre-push-ts.yml
+#
+# TypeScript/JavaScript test suite for the `pre-push` git hook.
+#
+# Consume it from a project's `lefthook.yml` via `remotes:` (see README):
+#
+#   remotes:
+#     - git_url: https://github.com/MartinCa/lefthook-configs
+#       ref: v2.1.0
+#       configs:
+#         - pre-push-ts.yml
+#
+# A pre-push command has no glob/file template on purpose: lefthook only knows
+# the pushed file list (`{push_files}`), and a test suite is repo-wide anyway —
+# `test-ts` runs on EVERY push. Keep the suite fast; it gates every push.
+#
+# Escape hatches for real emergencies:
+#   - git push --no-verify   # bypass ALL hooks for this push
+#   - LEFTHOOK=0 git push    # bypass lefthook only (re-register on install)
+#
+# Requirements: `pnpm` on PATH and a `test` script in the consumer's
+# package.json. Consume only the fragment(s) matching your stack — the
+# one-command-per-fragment layout mirrors the suffixed `langs/*` convention, so
+# `test-ts`/`test-python`/`test-go` never collide across `configs:` entries.
+pre-push:
+  parallel: true
+  commands:
+    test-ts:
+      run: pnpm test

@@ -1,0 +1,30 @@
+# pre-push-python.yml
+#
+# Python test suite for the `pre-push` git hook.
+#
+# Consume it from a project's `lefthook.yml` via `remotes:` (see README):
+#
+#   remotes:
+#     - git_url: https://github.com/MartinCa/lefthook-configs
+#       ref: v2.1.0
+#       configs:
+#         - pre-push-python.yml
+#
+# A pre-push command has no glob/file template on purpose: lefthook only knows
+# the pushed file list (`{push_files}`), and a test suite is repo-wide anyway —
+# `test-python` runs on EVERY push. Keep the suite fast; it gates every push.
+#
+# Escape hatches for real emergencies:
+#   - git push --no-verify   # bypass ALL hooks for this push
+#   - LEFTHOOK=0 git push    # bypass lefthook only (re-register on install)
+#
+# Requirements: `uv` (astral-sh/uv) on PATH with pytest configured as a project
+# dev dependency (`uv run pytest` resolves it without a global install).
+# Consume only the fragment(s) matching your stack — the one-command-per-
+# fragment layout mirrors the suffixed `langs/*` convention, so
+# `test-python`/`test-ts`/`test-go` never collide across `configs:` entries.
+pre-push:
+  parallel: true
+  commands:
+    test-python:
+      run: uv run pytest

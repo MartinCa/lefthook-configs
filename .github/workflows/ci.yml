@@ -46,7 +46,7 @@ jobs:
         run: npm install -g lefthook@${{ env.LEFTHOOK_VERSION }}
       - name: Validate lefthook fragments
         run: |
-          for fragment in lefthook-shared.yml commit-msg.yml langs/*.yml; do
+          for fragment in lefthook-shared.yml commit-msg.yml langs/*.yml pre-push-*.yml; do
             LEFTHOOK_CONFIG="$fragment" lefthook validate
           done
           echo "All lefthook fragments validated"

@@ -16,6 +16,9 @@ lefthook's `remotes:` mechanism, never by vendoring.
 | `langs/go.yml` | `pre-commit` | `gofmt -w` + `goimports -w` on staged Go | `gofmt`, `goimports` |
 | `langs/shell.yml` | `pre-commit` | `shfmt -w` + blocking `shellcheck` on staged shell scripts via `format-shell`/`lint-shell` (suffixed so it composes with `langs/ts.yml`) | `shfmt`, `shellcheck` |
 | `langs/json.yml` | `pre-commit` | Check-only `jq --indent 2 .` on staged JSON via `check-json` (no Node.js needed; suffixed so it composes with `langs/ts.yml`) | `jq` |
+| `pre-push-ts.yml` | `pre-push` | Full TypeScript/JavaScript test suite on every push via `test-ts` (repo-wide — no file filtering) | `pnpm` + a `test` script |
+| `pre-push-python.yml` | `pre-push` | Full Python test suite on every push via `test-python` | `uv` + dev-dep `pytest` |
+| `pre-push-go.yml` | `pre-push` | Full Go test suite on every push via `test-go` (`go test ./...`) | `go` toolchain |
 
 Every fragment carries a top-of-file comment documenting how to consume it
 and what it requires.
@@ -28,7 +31,7 @@ Add or merge the following into your project's `lefthook.yml`:
 # lefthook.yml
 remotes:
   - git_url: https://github.com/MartinCa/lefthook-configs
-    ref: v2.0.0
+    ref: v2.1.0
     configs:
       - lefthook-shared.yml
       - commit-msg.yml
@@ -77,6 +80,41 @@ remotes:
   is not only inspecting `lefthook.yml`. The validation failure is expected —
   verify merged behavior with `lefthook dump` (after `lefthook install -f`)
   or `lefthook run <hook>`.
+
+## Pre-push test suites (push-time)
+
+`pre-push-*.yml` fragments gate pushes on the repo's test suite. One fragment
+per language, each contributing a single suffixed `test-*` command — the same
+composable model as the `langs/*` fragments (`test-ts`/`test-python`/`test-go`
+never collide across `configs:` entries), so consumers list exactly their
+stack:
+
+```yaml
+remotes:
+  - git_url: https://github.com/MartinCa/lefthook-configs
+    ref: v2.1.0
+    configs:
+      - lefthook-shared.yml
+      - langs/python.yml
+      - pre-push-python.yml   # omit unless this repo actually has a pytest suite
+      - commit-msg.yml
+```
+
+Pre-push commands deliberately have **no glob/file template**: lefthook only
+knows the pushed file list (`{push_files}`), and a test suite is repo-wide
+anyway — `test-python` therefore runs on **every push**. Keep suites fast and
+green; they block every push. Both bypasses exist for real emergencies (a
+per-command `skip:` here would silently hide a broken suite — by design there
+is none):
+
+```console
+$ git push --no-verify    # bypass hooks for this push
+$ LEFTHOOK=0 git push     # bypass lefthook only (re-registers on `lefthook install`)
+```
+
+All `pre-push-*.yml` fragments set `parallel: true`: a single-command group
+is order-independent across `configs:` entries, and two language suites only
+run together when a consumer opts into both.
 
 ## Installing lefthook in a consumer project
 
@@ -135,9 +173,12 @@ pre-commit:
 
 This replaces the fragment's `run:` while inheriting its `glob`/`stage_fixed`.
 Reference implementation: [frontend-kit's committed `lefthook-local.yml`](https://github.com/MartinCa/frontend-kit/blob/main/lefthook-local.yml)
-(frontend-kit additionally excludes `test/fixtures/**` — repo-specific;
-still pinned to v1.0.1, so its override keys are the old `lint`/`format` —
-rename to `lint-ts`/`format-ts` when bumping to v2.0.0).
+(frontend-kit is the reference implementation — it pins this repo's fragments
+and keeps its override keys in sync with the fragment command names, the v2
+suffixed `lint-ts`/`format-ts`; it additionally narrows both commands with a
+repo-specific `exclude: ["test/fixtures/**"]`). This note deliberately stays
+version-agnostic: bumping versions only moves the `ref:` in frontend-kit's
+`lefthook.yml`, so there is nothing here to update.
 Note the lefthook convention: `lefthook-local.yml` is normally *personal and
 untracked* (it is even gitignored in this repo). Teams that commit it for a
 team-wide override should say so in their own docs — frontend-kit does, in
@@ -214,8 +255,8 @@ v1.0.x must update by-name references:
 - committed `lefthook-local.yml` overrides keyed on `lint`/`format` for the
   TS hooks need their keys renamed. Known consumer:
   [frontend-kit](https://github.com/MartinCa/frontend-kit), whose committed
-  `lefthook-local.yml` overrides `lint`/`format` — it must update those
-  keys to `lint-ts`/`format-ts` when bumping;
+  `lefthook-local.yml` previously overrode `lint`/`format` and has since been
+  updated to the suffixed `lint-ts`/`format-ts`;
 - mixed-language repos that worked around the collision — by re-declaring the
   TS commands under distinct local names, or by maintaining their own
   suffixed overrides — can now consume any combination of `langs/*.yml`
@@ -223,7 +264,30 @@ v1.0.x must update by-name references:
 
 ### Automated ref bumps (Renovate)
 
-Consumers using Renovate can bump `ref:` automatically with a regex manager:
+For repos that already extend the org Renovate config, a shared preset for
+bumping `ref:` pins ships in
+[MartinCa/renovate-config](https://github.com/MartinCa/renovate-config)
+(preset `:lefthook`, defined in that repo's `lefthook.json`):
+
+```jsonc
+// renovate.json
+{
+  "extends": [
+    "github>MartinCa/renovate-config",
+    "github>MartinCa/renovate-config:lefthook"
+  ]
+}
+```
+
+The `github>` prefix resolves both presets against
+`MartinCa/renovate-config` on github.com (Renovate docs, "GitHub presets"):
+the first entry activates the org baseline, the second the `:lefthook`
+ref-bump manager.
+
+Repos that do not extend the org config can bump `ref:` with a self-contained
+regex manager instead. Match `ref:` only on this repo's own `git_url` entry —
+an unscoped `ref:` matcher would also bump unrelated remotes pinned in the
+same file:
 
 ```jsonc
 // renovate.json
@@ -231,7 +295,9 @@ Consumers using Renovate can bump `ref:` automatically with a regex manager:
   "regexManagers": [
     {
       "fileMatch": ["(^|/)lefthook\\.ya?ml$"],
-      "matchStrings": ["ref: (?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+)\\s*$"],
+      "matchStrings": [
+        "(?:\\r?\\n[ \\t]*-[ \\t]+)git_url:[\\t ]*[\"']?[^\"'\\r\\n]*MartinCa/lefthook-configs[^\"'\\r\\n]*[\"']?[\\t ]*(?:#.*)?\\s+ref:[\\t ]*[\"']?(?<currentValue>v\\d+\\.\\d+\\.\\d+)(?:\\s|[\"']|#|$)"
+      ],
       "depNameTemplate": "lefthook-configs",
       "packageNameTemplate": "MartinCa/lefthook-configs",
       "datasourceTemplate": "github-tags"

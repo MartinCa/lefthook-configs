@@ -266,22 +266,23 @@ v1.0.x must update by-name references:
 
 For repos that already extend the org Renovate config, a shared preset for
 bumping `ref:` pins ships in
-[MartinCa/renovate-config](https://github.com/MartinCa/renovate-config) (a
-separate PR in that repo; this section references the preset as it will be —
-confirm the exact preset name against that PR when it lands):
+[MartinCa/renovate-config](https://github.com/MartinCa/renovate-config)
+(preset `:lefthook`, defined in that repo's `lefthook.json`):
 
 ```jsonc
 // renovate.json
 {
   "extends": [
-    "local>MartinCa/renovate-config",
-    "local>MartinCa/renovate-config:lefthookConfigs"
+    "github>MartinCa/renovate-config",
+    "github>MartinCa/renovate-config:lefthook"
   ]
 }
 ```
 
-The `local>` prefix resolves on github.com exactly like `github>` but stays
-portable to other Git hosts (Renovate docs, "Local presets").
+The `github>` prefix resolves both presets against
+`MartinCa/renovate-config` on github.com (Renovate docs, "GitHub presets"):
+the first entry activates the org baseline, the second the `:lefthook`
+ref-bump manager.
 
 Repos that do not extend the org config can bump `ref:` with a self-contained
 regex manager instead:

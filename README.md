@@ -285,7 +285,9 @@ the first entry activates the org baseline, the second the `:lefthook`
 ref-bump manager.
 
 Repos that do not extend the org config can bump `ref:` with a self-contained
-regex manager instead:
+regex manager instead. Match `ref:` only on this repo's own `git_url` entry —
+an unscoped `ref:` matcher would also bump unrelated remotes pinned in the
+same file:
 
 ```jsonc
 // renovate.json
@@ -293,7 +295,9 @@ regex manager instead:
   "regexManagers": [
     {
       "fileMatch": ["(^|/)lefthook\\.ya?ml$"],
-      "matchStrings": ["ref: (?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+)\\s*$"],
+      "matchStrings": [
+        "(?:\\r?\\n[ \\t]*-[ \\t]+)git_url:[\\t ]*[\"']?[^\"'\\r\\n]*MartinCa/lefthook-configs[^\"'\\r\\n]*[\"']?[\\t ]*(?:#.*)?\\s+ref:[\\t ]*[\"']?(?<currentValue>v\\d+\\.\\d+\\.\\d+)(?:\\s|[\"']|#|$)"
+      ],
       "depNameTemplate": "lefthook-configs",
       "packageNameTemplate": "MartinCa/lefthook-configs",
       "datasourceTemplate": "github-tags"

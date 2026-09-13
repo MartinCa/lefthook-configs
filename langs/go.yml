@@ -6,7 +6,7 @@
 #
 #   remotes:
 #     - git_url: https://github.com/MartinCa/lefthook-configs
-#       ref: v2.0.0
+#       ref: v2.1.0
 #       configs:
 #         - langs/go.yml
 #
